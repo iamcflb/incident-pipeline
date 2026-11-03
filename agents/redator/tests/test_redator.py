@@ -2,11 +2,12 @@
 Testes para o Agente Redator.
 """
 import tempfile
-import pytest
 from pathlib import Path
 
+import pytest
+from agent_shared.schemas import AgenteRole, RedatorConfig
+
 from redator.main import RedatorAgent, run_redator
-from agent_shared.schemas import RedatorConfig, AgenteRole
 
 
 class TestRedatorAgent:

@@ -8,24 +8,22 @@ Classifica domínio usando:
 import argparse
 import sys
 from pathlib import Path
-from typing import Optional
 
 from agent_shared.schemas import (
-    LimpoOutput,
+    AgenteRole,
     ClassificacaoOutput,
+    Dominio,
     PipelineRecord,
+    Severidade,
     StatusProcessamento,
     TriadorConfig,
-    AgenteRole,
-    Dominio,
-    Severidade,
 )
 from agent_shared.utils import (
-    setup_logging,
+    atualizar_pipeline_record,
+    carregar_json,
     gerar_pipeline_id,
     salvar_json,
-    carregar_json,
-    atualizar_pipeline_record,
+    setup_logging,
 )
 
 logger = setup_logging("INFO", "triador")
@@ -46,6 +44,8 @@ PALAVRAS_CHAVE_DOMINIO = {
         "kubelet", "kube-proxy", "apiserver", "etcd", "controller-manager",
         "scheduler", "cni", "csi", "rbac", "crb", "rolebinding",
         "helm", "chart", "release", "values.yaml", "kustomize",
+        "crashloopbackoff", "oomkilled", "imagepullbackoff", "pending",
+        "evicted", "containercreating", "runc", "containerd", "cri-o",
     ],
     Dominio.HADOOP: [
         "hadoop", "hdfs", "namenode", "datanode", "yarn", "resourcemanager",

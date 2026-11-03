@@ -25,13 +25,13 @@ install:
 	@echo "Installing shared library..."
 	cd shared && pip install -e ".[dev]"
 	@echo "Installing redator..."
-	cd agents/redator && pip install -e ".[dev]"
+	cd agents/redator && pip install -e ".[dev]" --no-deps
 	@echo "Installing triador..."
-	cd agents/triador && pip install -e ".[dev]"
+	cd agents/triador && pip install -e ".[dev]" --no-deps
 	@echo "Installing especialista..."
-	cd agents/especialista && pip install -e ".[dev]"
+	cd agents/especialista && pip install -e ".[dev]" --no-deps
 	@echo "Installing handoff..."
-	cd agents/handoff && pip install -e ".[dev]"
+	cd agents/handoff && pip install -e ".[dev]" --no-deps
 
 # ===================== Testing =====================
 test: test-shared test-redator test-triador test-especialista test-handoff
@@ -107,16 +107,16 @@ undeploy-prod:
 
 # ===================== Local Development =====================
 run-redator:
-	cd agents/redator && python -m redator $(ARGS)
+	PYTHONPATH=/home/cflb/agent-architecture/agents/redator/src python -m redator $(ARGS)
 
 run-triador:
-	cd agents/triador && python -m triador $(ARGS)
+	PYTHONPATH=/home/cflb/agent-architecture/agents/triador/src python -m triador $(ARGS)
 
 run-especialista:
-	cd agents/especialista && python -m especialista $(ARGS)
+	PYTHONPATH=/home/cflb/agent-architecture/agents/especialista/src python -m especialista $(ARGS)
 
 run-handoff:
-	cd agents/handoff && python -m handoff $(ARGS)
+	PYTHONPATH=/home/cflb/agent-architecture/agents/handoff/src python -m handoff $(ARGS)
 
 # Pipeline local completo
 run-pipeline:
@@ -124,17 +124,17 @@ run-pipeline:
 	@echo "1. Criando bruto.txt de teste..."
 	@echo "ERROR - senha=secreto123 token=abc123\nDAG example_dag task task1 failed\nScheduler heartbeat missed" > /tmp/bruto.txt
 	@echo "2. Redator..."
-	cd agents/redator && python -m redator /tmp/bruto.txt /tmp/limpo.txt
+	PYTHONPATH=/home/cflb/agent-architecture/agents/redator/src python -m redator /tmp/bruto.txt /tmp/limpo.txt
 	@echo "3. Triador..."
-	cd agents/triador && python -m triador /tmp/limpo.txt
+	PYTHONPATH=/home/cflb/agent-architecture/agents/triador/src python -m triador /tmp/limpo.txt
 	@echo "4. Especialista (se ambíguo)..."
 	@if grep -q "ambíguo.*true" /tmp/limpo.classificacao.json; then \
-		cd agents/especialista && python -m especialista /tmp/limpo.classificacao.json; \
+		PYTHONPATH=/home/cflb/agent-architecture/agents/especialista/src python -m especialista /tmp/limpo.classificacao.json; \
 	else \
 		echo "Classificação clara, pulando especialista"; \
 	fi
 	@echo "5. Handoff..."
-	cd agents/handoff && python -m handoff /tmp/limpo.classificacao.json --canais slack
+	PYTHONPATH=/home/cflb/agent-architecture/agents/handoff/src python -m handoff /tmp/limpo.classificacao.json --canais slack
 	@echo "=== Pipeline Concluído ==="
 
 # ===================== Utilities =====================

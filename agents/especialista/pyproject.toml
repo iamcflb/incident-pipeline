@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Agente Especialista - Análise profunda de incidentes ambíguos"
 requires-python = ">=3.11"
 dependencies = [
-    "agent-shared @ file://../../shared",
+    "agent-shared",
     "openai>=1.0; extra == 'llm'",
     "anthropic>=0.7; extra == 'llm'",
 ]

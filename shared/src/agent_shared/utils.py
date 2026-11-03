@@ -1,16 +1,20 @@
 """
 Shared utilities for all agents.
 """
-import re
 import hashlib
 import json
 import logging
+import re
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-from datetime import datetime
+
 from pydantic import BaseModel
 
 from .schemas import PipelineRecord, StatusProcessamento
+
+# Counter para garantir IDs únicos em testes rápidos
+_pipeline_id_counter = 0
 
 
 def setup_logging(level: str = "INFO", agent_name: str = "agent") -> logging.Logger:
@@ -31,10 +35,12 @@ def setup_logging(level: str = "INFO", agent_name: str = "agent") -> logging.Log
 
 
 def gerar_pipeline_id(conteudo: str) -> str:
-    """Gera ID único para o pipeline baseado no hash do conteúdo + timestamp."""
+    """Gera ID único para o pipeline baseado no hash do conteúdo + timestamp + counter."""
+    global _pipeline_id_counter
+    _pipeline_id_counter += 1
     hash_curto = hashlib.sha256(conteudo.encode()).hexdigest()[:12]
-    timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
-    return f"pipe-{timestamp}-{hash_curto}"
+    timestamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S%f")[:-3]  # milissegundos
+    return f"pipe-{timestamp}-{hash_curto}-{_pipeline_id_counter:04d}"
 
 
 def salvar_json(caminho: str | Path, dados: dict | BaseModel) -> None:
@@ -66,7 +72,7 @@ def atualizar_pipeline_record(
 ) -> PipelineRecord:
     """Atualiza um PipelineRecord com novo status e campos."""
     record.status = status
-    record.atualizado_em = datetime.utcnow()
+    record.atualizado_em = datetime.now(UTC)
     for k, v in campos.items():
         if hasattr(record, k):
             setattr(record, k, v)
@@ -75,13 +81,18 @@ def atualizar_pipeline_record(
 
 # ===================== Redaction Patterns =====================
 
+# Ordem importa: patterns mais específicos primeiro
 PADROES_SENSIVEIS_DEFAULT = [
-    # Senhas e tokens
+    # JWT (deve vir antes de token genérico) - matcha JWT puro ou prefixado
+    (r"(?i)(?:token\s*[:=]\s*)?(eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)", "jwt"),
+    # Senhas
     (r"(?i)(senha|password|pwd|pass)\s*[:=]\s*[^\s]+", "senha"),
-    (r"(?i)(token|access_token|refresh_token|api_key|apikey)\s*[:=]\s*[^\s]+", "token"),
+    # Tokens específicos (access_token, refresh_token, api_key, apikey)
+    (r"(?i)(access_token|refresh_token|api_key|apikey)\s*[:=]\s*[^\s]+", "token"),
+    # Token genérico (não JWT)
+    (r"(?i)token\s*[:=]\s*(?![A-Za-z0-9_-]*\.[A-Za-z0-9_-]*\.)[^\s]+", "token"),
+    # Secrets
     (r"(?i)(secret|client_secret)\s*[:=]\s*[^\s]+", "secret"),
-    # JWT
-    (r"eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+", "jwt"),
     # Keytab / Kerberos
     (r"(?i)keytab\s*[:=]\s*[^\s]+", "keytab"),
     # AWS
@@ -124,7 +135,12 @@ def redatar_texto(texto: str, padroes: list[tuple[re.Pattern, str]] | None = Non
     for pattern, label in padroes:
         matches = pattern.findall(resultado)
         if matches:
-            redacoes.extend([label] * len(matches))
+            # Se o pattern tem grupos, findall retorna tuplas; pega o grupo relevante
+            if matches and isinstance(matches[0], tuple):
+                # Para JWT, o grupo 1 é o token JWT
+                redacoes.extend([label] * len(matches))
+            else:
+                redacoes.extend([label] * len(matches))
             resultado = pattern.sub(f"[REDACTED:{label.upper()}]", resultado)
 
     return resultado, redacoes

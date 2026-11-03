@@ -2,21 +2,23 @@
 Testes para o Agente Especialista.
 """
 import tempfile
-import pytest
 from pathlib import Path
 
-from especialista.main import EspecialistaAgent, run_especialista, BASE_CONHECIMENTO
+import pytest
 from agent_shared.schemas import (
-    EspecialistaConfig,
     AgenteRole,
+    BrutoInput,
     ClassificacaoOutput,
     Dominio,
-    Severidade,
-    PipelineRecord,
-    StatusProcessamento,
+    EspecialistaConfig,
     LimpoOutput,
+    PipelineRecord,
+    Severidade,
+    StatusProcessamento,
 )
 from agent_shared.utils import salvar_json
+
+from especialista.main import EspecialistaAgent, run_especialista
 
 
 class TestEspecialistaAgent:
@@ -73,7 +75,7 @@ class TestEspecialistaAgent:
             confianca=0.4,
             severidade=Severidade.CRITICAL,
             ambíguo=True,
-            tags=["pod", "crashloopbackoff"],
+            tags=["pod", "oomkilled"],
             limpo_id="test-456"
         )
         conteudo = "Pod nginx-deployment-abc123 is in CrashLoopBackOff: OOMKilled"
@@ -180,20 +182,24 @@ class TestEspecialistaAgent:
         assert "rbac" in resultado.causa_raiz.lower() or "access denied" in resultado.causa_raiz.lower()
 
     def test_nao_ambiguo_retorna_direto(self, agent):
-        """Testa que classificação não ambígua retorna direto."""
-        classificacao = ClassificacaoOutput(
-            dominio=Dominio.AIRFLOW,
-            confianca=0.9,
-            severidade=Severidade.HIGH,
-            ambíguo=False,
-            tags=["dag"],
-            limpo_id="test-clear"
-        )
+        """Testa que classificação não ambígua retorna direto via processar."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            entrada = Path(tmpdir) / "classificacao.json"
 
-        resultado = agent._analisar_mock(classificacao, "conteúdo qualquer")
+            classificacao = ClassificacaoOutput(
+                dominio=Dominio.AIRFLOW,
+                confianca=0.9,
+                severidade=Severidade.HIGH,
+                ambíguo=False,
+                tags=["dag"],
+                limpo_id="test-clear"
+            )
+            salvar_json(entrada, classificacao)
 
-        assert "não requer análise profunda" in resultado.causa_raiz
-        assert "handoff direto" in resultado.solucao_sugerida
+            resultado = agent.processar(entrada)
+
+            assert "não requer análise profunda" in resultado.causa_raiz
+            assert "handoff direto" in resultado.solucao_sugerida
 
     def test_processar_classificacao_json(self, agent):
         """Testa processamento de arquivo .classificacao.json."""
@@ -225,9 +231,10 @@ class TestEspecialistaAgent:
         with tempfile.TemporaryDirectory() as tmpdir:
             record_path = Path(tmpdir) / "limpo.record.json"
 
+            # Cria record simulado
             record = PipelineRecord(
                 pipeline_id="pipe-456",
-                bruto=None,
+                bruto=BrutoInput(conteudo="original", fonte="test"),
                 limpo=LimpoOutput(
                     conteudo="ERROR - Scheduler heartbeat missed, database connection failed",
                     redacoes_aplicadas=[]

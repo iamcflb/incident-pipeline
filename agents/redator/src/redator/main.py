@@ -6,22 +6,22 @@ Remove dados sensíveis usando regex patterns + opcionalmente truffleHog3.
 import argparse
 import sys
 from pathlib import Path
-from datetime import datetime
 
 from agent_shared.schemas import (
+    AgenteRole,
     BrutoInput,
     LimpoOutput,
     PipelineRecord,
-    StatusProcessamento,
     RedatorConfig,
-    AgenteRole,
+    StatusProcessamento,
 )
 from agent_shared.utils import (
-    setup_logging,
-    gerar_pipeline_id,
-    salvar_json,
-    redatar_texto,
+    atualizar_pipeline_record,
     compilar_padroes,
+    gerar_pipeline_id,
+    redatar_texto,
+    salvar_json,
+    setup_logging,
 )
 
 logger = setup_logging("INFO", "redator")
@@ -48,6 +48,10 @@ class RedatorAgent:
         except ImportError:
             logger.warning("truffleHog3 não instalado, usando apenas regex")
             self.usar_trufflehog = False
+
+    def redatar_texto(self, texto: str) -> tuple[str, list[str]]:
+        """Método público para redação de texto (usado em testes)."""
+        return redatar_texto(texto, self.padroes)
 
     def processar(self, arquivo_entrada: str | Path, arquivo_saida: str | Path) -> LimpoOutput:
         """

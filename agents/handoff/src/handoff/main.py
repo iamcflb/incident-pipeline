@@ -10,32 +10,28 @@ Envia incidentes para:
 Suporta modo mock para desenvolvimento.
 """
 import argparse
-import sys
 import smtplib
-import json
-from pathlib import Path
-from typing import Optional
-from email.mime.text import MIMEText
+import sys
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime
+from email.mime.text import MIMEText
+from pathlib import Path
 
 from agent_shared.schemas import (
-    ClassificacaoOutput,
+    AgenteRole,
     AnaliseEspecialistaOutput,
+    ClassificacaoOutput,
+    Dominio,
+    HandoffConfig,
     HandoffPayload,
     PipelineRecord,
-    StatusProcessamento,
-    HandoffConfig,
-    AgenteRole,
-    Dominio,
     Severidade,
+    StatusProcessamento,
 )
 from agent_shared.utils import (
-    setup_logging,
-    gerar_pipeline_id,
-    salvar_json,
-    carregar_json,
     atualizar_pipeline_record,
+    carregar_json,
+    salvar_json,
+    setup_logging,
 )
 
 logger = setup_logging("INFO", "handoff")
@@ -57,9 +53,10 @@ class HandoffAgent:
         # Jira
         if "jira" in self.canais and self.config.jira_project_key:
             try:
-                from jira import JIRA
                 # Configuração via env vars ou config
                 import os
+
+                from jira import JIRA
                 jira_url = os.getenv("JIRA_URL")
                 jira_user = os.getenv("JIRA_USER")
                 jira_token = os.getenv("JIRA_TOKEN")
@@ -83,7 +80,7 @@ class HandoffAgent:
     def _montar_payload(
         self,
         classificacao: ClassificacaoOutput,
-        analise: Optional[AnaliseEspecialistaOutput] = None,
+        analise: AnaliseEspecialistaOutput | None = None,
         conteudo_original: str = ""
     ) -> HandoffPayload:
         """Monta payload rico para envio."""
@@ -269,6 +266,7 @@ class HandoffAgent:
     def _enviar_teams(self, payload: HandoffPayload) -> dict:
         """Envia para Teams via webhook."""
         import os
+
         import requests
         teams_webhook = os.getenv("TEAMS_WEBHOOK_URL")
 
@@ -308,7 +306,7 @@ class HandoffAgent:
     def processar(
         self,
         arquivo_classificacao: str | Path,
-        arquivo_analise: Optional[str | Path] = None
+        arquivo_analise: str | Path | None = None
     ) -> dict:
         """
         Processa classificação (+ análise opcional) e envia para canais.
@@ -388,7 +386,7 @@ class HandoffAgent:
 
 def run_handoff(
     arquivo_classificacao: str,
-    arquivo_analise: Optional[str] = None,
+    arquivo_analise: str | None = None,
     config: HandoffConfig | None = None
 ) -> dict:
     """Função de conveniência para executar o handoff."""
@@ -436,7 +434,7 @@ def main() -> int:
 
     try:
         resultados = run_handoff(args.classificacao, args.analise, config)
-        print(f"✅ Handoff concluído")
+        print("✅ Handoff concluído")
         for canal, resultado in resultados.items():
             status = resultado.get("status", "unknown")
             icon = "✅" if status == "success" else "⏭️" if status == "skipped" else "❌"

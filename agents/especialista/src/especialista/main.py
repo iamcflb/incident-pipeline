@@ -9,27 +9,24 @@ Analisa incidentes ambíguos usando:
 Pode rodar em modo "mock" para desenvolvimento sem API keys.
 """
 import argparse
-import sys
 import json
+import sys
 from pathlib import Path
-from typing import Optional
-from datetime import datetime
 
 from agent_shared.schemas import (
-    ClassificacaoOutput,
+    AgenteRole,
     AnaliseEspecialistaOutput,
+    ClassificacaoOutput,
+    Dominio,
+    EspecialistaConfig,
     PipelineRecord,
     StatusProcessamento,
-    EspecialistaConfig,
-    AgenteRole,
-    Dominio,
 )
 from agent_shared.utils import (
-    setup_logging,
-    gerar_pipeline_id,
-    salvar_json,
-    carregar_json,
     atualizar_pipeline_record,
+    carregar_json,
+    salvar_json,
+    setup_logging,
 )
 
 logger = setup_logging("INFO", "especialista")
@@ -478,7 +475,7 @@ def main() -> int:
 
     try:
         resultado = run_especialista(args.entrada, config)
-        print(f"✅ Análise concluída")
+        print("✅ Análise concluída")
         print(f"   Causa raiz: {resultado.causa_raiz[:100]}...")
         print(f"   Solução: {resultado.solucao_sugerida[:100]}...")
         print(f"   Ações imediatas: {len(resultado.acoes_imediatas)}")

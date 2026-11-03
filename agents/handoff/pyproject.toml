@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Agente Handoff - Envia incidentes para times (Jira, Slack, Email)"
 requires-python = ">=3.11"
 dependencies = [
-    "agent-shared @ file://../../shared",
+    "agent-shared",
     "requests>=2.31",
     "jira>=3.4; extra == 'jira'",
     "slack-sdk>=3.21; extra == 'slack'",
