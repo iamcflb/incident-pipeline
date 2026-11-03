@@ -7,7 +7,7 @@ metadata:
     app: agent-especialista
     component: especialista
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app: agent-especialista
@@ -16,10 +16,6 @@ spec:
       labels:
         app: agent-especialista
         component: especialista
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "8080"
-        prometheus.io/path: "/metrics"
     spec:
       serviceAccountName: agent-especialista
       securityContext:
@@ -28,14 +24,11 @@ spec:
         fsGroup: 1000
       containers:
         - name: especialista
-          image: agent-especialista:latest
+          image: agent-especialista:dev
           imagePullPolicy: IfNotPresent
-          ports:
-            - containerPort: 8080
-              name: http
           env:
             - name: LOG_LEVEL
-              value: "INFO"
+              value: "DEBUG"
             - name: INPUT_PATH
               value: "/data/in"
             - name: OUTPUT_PATH
@@ -58,48 +51,15 @@ spec:
                   optional: true
           resources:
             requests:
-              cpu: "200m"
-              memory: "512Mi"
+              cpu: "100m"
+              memory: "256Mi"
             limits:
-              cpu: "1000m"
-              memory: "2Gi"
+              cpu: "500m"
+              memory: "1Gi"
           volumeMounts:
             - name: data
               mountPath: /data
-            - name: config
-              mountPath: /config
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 8080
-            initialDelaySeconds: 15
-            periodSeconds: 30
-          readinessProbe:
-            httpGet:
-              path: /ready
-              port: 8080
-            initialDelaySeconds: 10
-            periodSeconds: 10
       volumes:
         - name: data
           persistentVolumeClaim:
             claimName: agent-data-pvc
-        - name: config
-          configMap:
-            name: agent-especialista-config
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: agent-especialista
-  namespace: agent-system
-  labels:
-    app: agent-especialista
-spec:
-  selector:
-    app: agent-especialista
-  ports:
-    - port: 8080
-      targetPort: 8080
-      name: http
-  type: ClusterIP

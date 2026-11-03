@@ -6,7 +6,6 @@ build-backend = "setuptools.build_meta"
 name = "agent-shared"
 version = "0.1.0"
 description = "Shared library for micro-agents"
-readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "pydantic>=2.5",

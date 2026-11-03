@@ -12,6 +12,7 @@ dependencies = [
     "requests>=2.31",
     "jira>=3.4; extra == 'jira'",
     "slack-sdk>=3.21; extra == 'slack'",
+    "watchdog>=3.0",
 ]
 
 [project.optional-dependencies]

@@ -10,6 +10,7 @@ requires-python = ">=3.11"
 dependencies = [
     "agent-shared",
     "trufflehog3>=3.4; extra == 'trufflehog'",
+    "watchdog>=3.0",
 ]
 
 [project.optional-dependencies]

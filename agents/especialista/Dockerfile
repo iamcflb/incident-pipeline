@@ -12,13 +12,16 @@ RUN groupadd -r appuser && useradd -r -g appuser -u 1000 appuser
 # Set work directory
 WORKDIR /app
 
-# Copy shared library first (for caching)
-COPY shared/pyproject.toml shared/src ./shared/
+# Copy shared library (entire directory to preserve structure)
+COPY shared ./shared/
 RUN pip install --no-cache-dir -e ./shared
 
 # Copy agent code
-COPY agents/especialista/pyproject.toml agents/especialista/src ./agents/especialista/
+COPY agents/especialista ./agents/especialista/
 RUN pip install --no-cache-dir -e ./agents/especialista
+
+# Copy watcher
+COPY agents/especialista/watcher.py ./agents/especialista/
 
 # Create data directories
 RUN mkdir -p /data/in /data/out && chown -R appuser:appuser /data /app
@@ -33,6 +36,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD python -c "import requests; requests.get('http://localhost:8080/health')" || exit 1
 
-# Entry point
-ENTRYPOINT ["python", "-m", "especialista"]
-CMD ["--help"]
+# Entry point - run watcher
+ENTRYPOINT ["python", "agents/especialista/watcher.py"]

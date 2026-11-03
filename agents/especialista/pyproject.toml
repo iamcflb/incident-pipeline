@@ -11,6 +11,7 @@ dependencies = [
     "agent-shared",
     "openai>=1.0; extra == 'llm'",
     "anthropic>=0.7; extra == 'llm'",
+    "watchdog>=3.0",
 ]
 
 [project.optional-dependencies]

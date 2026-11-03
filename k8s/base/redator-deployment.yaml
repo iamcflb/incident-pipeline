@@ -7,7 +7,7 @@ metadata:
     app: agent-redator
     component: redator
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: agent-redator
@@ -16,10 +16,6 @@ spec:
       labels:
         app: agent-redator
         component: redator
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "8080"
-        prometheus.io/path: "/metrics"
     spec:
       serviceAccountName: agent-redator
       securityContext:
@@ -28,14 +24,11 @@ spec:
         fsGroup: 1000
       containers:
         - name: redator
-          image: agent-redator:latest
+          image: agent-redator:dev
           imagePullPolicy: IfNotPresent
-          ports:
-            - containerPort: 8080
-              name: http
           env:
             - name: LOG_LEVEL
-              value: "INFO"
+              value: "DEBUG"
             - name: INPUT_PATH
               value: "/data/in"
             - name: OUTPUT_PATH
@@ -54,48 +47,15 @@ spec:
                   optional: true
           resources:
             requests:
-              cpu: "100m"
-              memory: "128Mi"
+              cpu: "50m"
+              memory: "64Mi"
             limits:
-              cpu: "500m"
-              memory: "512Mi"
+              cpu: "200m"
+              memory: "256Mi"
           volumeMounts:
             - name: data
               mountPath: /data
-            - name: config
-              mountPath: /config
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 8080
-            initialDelaySeconds: 10
-            periodSeconds: 30
-          readinessProbe:
-            httpGet:
-              path: /ready
-              port: 8080
-            initialDelaySeconds: 5
-            periodSeconds: 10
       volumes:
         - name: data
           persistentVolumeClaim:
             claimName: agent-data-pvc
-        - name: config
-          configMap:
-            name: agent-redator-config
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: agent-redator
-  namespace: agent-system
-  labels:
-    app: agent-redator
-spec:
-  selector:
-    app: agent-redator
-  ports:
-    - port: 8080
-      targetPort: 8080
-      name: http
-  type: ClusterIP

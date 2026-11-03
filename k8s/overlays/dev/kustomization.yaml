@@ -3,7 +3,7 @@ kind: Kustomization
 
 namespace: agent-system
 
-bases:
+resources:
   - ../../base
 
 patches:
@@ -94,11 +94,13 @@ patches:
 
 configMapGenerator:
   - name: agent-config
-    behavior: merge
+    behavior: replace
     literals:
       - environment=development
       - log-level=DEBUG
       - s3-bucket=agent-incidents-dev
+      - loki-url=http://loki.monitoring:3100
+      - jira-project-key=INC
 
 images:
   - name: agent-redator
