@@ -1,0 +1,152 @@
+version: '3.8'
+
+services:
+  # Shared infrastructure
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  loki:
+    image: grafana/loki:2.9
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+    volumes:
+      - loki-data:/loki
+
+  prometheus:
+    image: prom/prometheus:v2.47
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+
+  grafana:
+    image: grafana/grafana:10.1
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+
+  # Agents (run as one-shot jobs or with file watchers)
+  redator:
+    build:
+      context: .
+      dockerfile: agents/redator/Dockerfile
+    volumes:
+      - ./data:/data
+      - ./agents/redator/src:/app/agents/redator/src:ro
+    environment:
+      LOG_LEVEL: DEBUG
+      INPUT_PATH: /data/in
+      OUTPUT_PATH: /data/out
+      S3_BUCKET: agent-incidents
+      LOKI_URL: http://loki:3100
+    depends_on:
+      - minio
+      - loki
+    profiles:
+      - agents
+
+  triador:
+    build:
+      context: .
+      dockerfile: agents/triador/Dockerfile
+    volumes:
+      - ./data:/data
+      - ./agents/triador/src:/app/agents/triador/src:ro
+    environment:
+      LOG_LEVEL: DEBUG
+      INPUT_PATH: /data/in
+      OUTPUT_PATH: /data/out
+      MODELO_CLASSIFICACAO: keyword
+      THRESHOLD_CONFIANCA: "0.7"
+      S3_BUCKET: agent-incidents
+      LOKI_URL: http://loki:3100
+    depends_on:
+      - minio
+      - loki
+    profiles:
+      - agents
+
+  especialista:
+    build:
+      context: .
+      dockerfile: agents/especialista/Dockerfile
+    volumes:
+      - ./data:/data
+      - ./agents/especialista/src:/app/agents/especialista/src:ro
+    environment:
+      LOG_LEVEL: DEBUG
+      INPUT_PATH: /data/in
+      OUTPUT_PATH: /data/out
+      USAR_LLM: "false"
+      MODELO_LLM: gpt-4
+      S3_BUCKET: agent-incidents
+      LOKI_URL: http://loki:3100
+    depends_on:
+      - minio
+      - loki
+    profiles:
+      - agents
+
+  handoff:
+    build:
+      context: .
+      dockerfile: agents/handoff/Dockerfile
+    volumes:
+      - ./data:/data
+      - ./agents/handoff/src:/app/agents/handoff/src:ro
+    environment:
+      LOG_LEVEL: DEBUG
+      INPUT_PATH: /data/in
+      OUTPUT_PATH: /data/out
+      CANAIS: slack
+      S3_BUCKET: agent-incidents
+      LOKI_URL: http://loki:3100
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+    depends_on:
+      - minio
+      - loki
+    profiles:
+      - agents
+
+  # File watcher to trigger pipeline
+  watcher:
+    image: python:3.11-slim
+    volumes:
+      - ./data:/data
+      - ./scripts:/scripts:ro
+    command: python /scripts/watch_and_process.py
+    depends_on:
+      - redator
+      - triador
+      - especialista
+      - handoff
+    profiles:
+      - watcher
+
+volumes:
+  minio-data:
+  loki-data:
+  prometheus-data:
+  grafana-data:

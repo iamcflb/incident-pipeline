@@ -1,0 +1,304 @@
+name: CI - Agent Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  PYTHON_VERSION: "3.11"
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ===================== Shared Library =====================
+  test-shared:
+    name: Test Shared Library
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./shared
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: shared/pyproject.toml
+
+      - name: Install dependencies
+        run: |
+          pip install -e ".[dev]"
+
+      - name: Run linter
+        run: ruff check src tests
+
+      - name: Run type checker
+        run: mypy src
+
+      - name: Run tests
+        run: pytest tests -v --cov=agent_shared --cov-report=xml
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./shared/coverage.xml
+          flags: shared
+
+  # ===================== Redator =====================
+  test-redator:
+    name: Test Redator Agent
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./agents/redator
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: agents/redator/pyproject.toml
+
+      - name: Install dependencies
+        run: |
+          pip install -e "file://$(pwd)/../../shared#[dev]"
+          pip install -e ".[dev]"
+
+      - name: Run linter
+        run: ruff check src tests
+
+      - name: Run type checker
+        run: mypy src
+
+      - name: Run tests
+        run: pytest tests -v --cov=redator --cov-report=xml
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./agents/redator/coverage.xml
+          flags: redator
+
+  # ===================== Triador =====================
+  test-triador:
+    name: Test Triador Agent
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./agents/triador
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: agents/triador/pyproject.toml
+
+      - name: Install dependencies
+        run: |
+          pip install -e "file://$(pwd)/../../shared#[dev]"
+          pip install -e ".[dev]"
+
+      - name: Run linter
+        run: ruff check src tests
+
+      - name: Run type checker
+        run: mypy src
+
+      - name: Run tests
+        run: pytest tests -v --cov=triador --cov-report=xml
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./agents/triador/coverage.xml
+          flags: triador
+
+  # ===================== Especialista =====================
+  test-especialista:
+    name: Test Especialista Agent
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./agents/especialista
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: agents/especialista/pyproject.toml
+
+      - name: Install dependencies
+        run: |
+          pip install -e "file://$(pwd)/../../shared#[dev]"
+          pip install -e ".[dev]"
+
+      - name: Run linter
+        run: ruff check src tests
+
+      - name: Run type checker
+        run: mypy src
+
+      - name: Run tests
+        run: pytest tests -v --cov=especialista --cov-report=xml
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./agents/especialista/coverage.xml
+          flags: especialista
+
+  # ===================== Handoff =====================
+  test-handoff:
+    name: Test Handoff Agent
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./agents/handoff
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: agents/handoff/pyproject.toml
+
+      - name: Install dependencies
+        run: |
+          pip install -e "file://$(pwd)/../../shared#[dev]"
+          pip install -e ".[dev]"
+
+      - name: Run linter
+        run: ruff check src tests
+
+      - name: Run type checker
+        run: mypy src
+
+      - name: Run tests
+        run: pytest tests -v --cov=handoff --cov-report=xml
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./agents/handoff/coverage.xml
+          flags: handoff
+
+  # ===================== Build & Push Images =====================
+  build-images:
+    name: Build & Push Docker Images
+    needs: [test-shared, test-redator, test-triador, test-especialista, test-handoff]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        agent: [redator, triador, especialista, handoff]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository }}/agent-${{ matrix.agent }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./agents/${{ matrix.agent }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ===================== Deploy Dev =====================
+  deploy-dev:
+    name: Deploy to Dev
+    needs: build-images
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/k8s-set-context@v1
+        with:
+          kubeconfig: ${{ secrets.KUBECONFIG_DEV }}
+
+      - name: Deploy with Kustomize
+        run: |
+          cd k8s/overlays/dev
+          kustomize edit set image agent-redator=${{ env.REGISTRY }}/${{ github.repository }}/agent-redator:latest
+          kustomize edit set image agent-triador=${{ env.REGISTRY }}/${{ github.repository }}/agent-triador:latest
+          kustomize edit set image agent-especialista=${{ env.REGISTRY }}/${{ github.repository }}/agent-especialista:latest
+          kustomize edit set image agent-handoff=${{ env.REGISTRY }}/${{ github.repository }}/agent-handoff:latest
+          kustomize build | kubectl apply -f -
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/agent-redator -n agent-system --timeout=300s
+          kubectl rollout status deployment/agent-triador -n agent-system --timeout=300s
+          kubectl rollout status deployment/agent-especialista -n agent-system --timeout=300s
+          kubectl rollout status deployment/agent-handoff -n agent-system --timeout=300s
+
+  # ===================== Deploy Prod =====================
+  deploy-prod:
+    name: Deploy to Production
+    needs: build-images
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/k8s-set-context@v1
+        with:
+          kubeconfig: ${{ secrets.KUBECONFIG_PROD }}
+
+      - name: Deploy with Kustomize
+        run: |
+          cd k8s/overlays/prod
+          kustomize edit set image agent-redator=${{ env.REGISTRY }}/${{ github.repository }}/agent-redator:${{ github.ref_name }}
+          kustomize edit set image agent-triador=${{ env.REGISTRY }}/${{ github.repository }}/agent-triador:${{ github.ref_name }}
+          kustomize edit set image agent-especialista=${{ env.REGISTRY }}/${{ github.repository }}/agent-especialista:${{ github.ref_name }}
+          kustomize edit set image agent-handoff=${{ env.REGISTRY }}/${{ github.repository }}/agent-handoff:${{ github.ref_name }}
+          kustomize build | kubectl apply -f -
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/agent-redator -n agent-system --timeout=300s
+          kubectl rollout status deployment/agent-triador -n agent-system --timeout=300s
+          kubectl rollout status deployment/agent-especialista -n agent-system --timeout=300s
+          kubectl rollout status deployment/agent-handoff -n agent-system --timeout=300s

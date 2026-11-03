@@ -1,0 +1,154 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: agent-redator
+  namespace: agent-system
+  labels:
+    app: agent-redator
+    role: redator
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: agent-redator
+  namespace: agent-system
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    resourceNames: ["agent-config", "agent-secrets"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    resourceNames: ["agent-data-pvc"]
+    verbs: ["get", "list", "update"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: agent-redator
+  namespace: agent-system
+subjects:
+  - kind: ServiceAccount
+    name: agent-redator
+    namespace: agent-system
+roleRef:
+  kind: Role
+  name: agent-redator
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: agent-triador
+  namespace: agent-system
+  labels:
+    app: agent-triador
+    role: triador
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: agent-triador
+  namespace: agent-system
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    resourceNames: ["agent-config", "agent-secrets"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    resourceNames: ["agent-data-pvc"]
+    verbs: ["get", "list", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: agent-triador
+  namespace: agent-system
+subjects:
+  - kind: ServiceAccount
+    name: agent-triador
+    namespace: agent-system
+roleRef:
+  kind: Role
+  name: agent-triador
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: agent-especialista
+  namespace: agent-system
+  labels:
+    app: agent-especialista
+    role: especialista
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: agent-especialista
+  namespace: agent-system
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    resourceNames: ["agent-config", "agent-secrets"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    resourceNames: ["agent-data-pvc"]
+    verbs: ["get", "list", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: agent-especialista
+  namespace: agent-system
+subjects:
+  - kind: ServiceAccount
+    name: agent-especialista
+    namespace: agent-system
+roleRef:
+  kind: Role
+  name: agent-especialista
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: agent-handoff
+  namespace: agent-system
+  labels:
+    app: agent-handoff
+    role: handoff
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: agent-handoff
+  namespace: agent-system
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    resourceNames: ["agent-config", "agent-secrets"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    resourceNames: ["agent-data-pvc"]
+    verbs: ["get", "list", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: agent-handoff
+  namespace: agent-system
+subjects:
+  - kind: ServiceAccount
+    name: agent-handoff
+    namespace: agent-system
+roleRef:
+  kind: Role
+  name: agent-handoff
+  apiGroup: rbac.authorization.k8s.io

@@ -1,0 +1,118 @@
+{
+  "dashboard": {
+    "title": "Agent Pipeline Overview",
+    "tags": ["agents", "pipeline"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "title": "Pipeline Throughput",
+        "type": "graph",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "rate(agent_pipeline_processed_total[5m])",
+            "legendFormat": "{{agent}} - {{status}}"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8}
+      },
+      {
+        "title": "Pipeline Latency (p50, p95, p99)",
+        "type": "graph",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(agent_pipeline_duration_seconds_bucket[5m]))",
+            "legendFormat": "p50"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(agent_pipeline_duration_seconds_bucket[5m]))",
+            "legendFormat": "p95"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(agent_pipeline_duration_seconds_bucket[5m]))",
+            "legendFormat": "p99"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8}
+      },
+      {
+        "title": "Redator - Redactions per Minute",
+        "type": "graph",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "rate(agent_redator_redactions_total[5m])",
+            "legendFormat": "{{label}}"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 8, "w": 6, "h": 6}
+      },
+      {
+        "title": "Triador - Classifications by Domain",
+        "type": "piechart",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "sum by (dominio) (agent_triador_classifications_total)",
+            "legendFormat": "{{dominio}}"
+          }
+        ],
+        "gridPos": {"x": 6, "y": 8, "w": 6, "h": 6}
+      },
+      {
+        "title": "Triador - Ambiguous Rate",
+        "type": "graph",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "rate(agent_triador_ambiguous_total[5m]) / rate(agent_triador_classifications_total[5m])",
+            "legendFormat": "ambiguous %"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 8, "w": 6, "h": 6}
+      },
+      {
+        "title": "Especialista - Analyses per Minute",
+        "type": "graph",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "rate(agent_especialista_analyses_total[5m])",
+            "legendFormat": "analyses/min"
+          }
+        ],
+        "gridPos": {"x": 18, "y": 8, "w": 6, "h": 6}
+      },
+      {
+        "title": "Handoff - Success Rate by Channel",
+        "type": "graph",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "sum by (canal) (rate(agent_handoff_sent_total{status=\"success\"}[5m])) / sum by (canal) (rate(agent_handoff_sent_total[5m]))",
+            "legendFormat": "{{canal}}"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 14, "w": 12, "h": 6}
+      },
+      {
+        "title": "Active Pods per Agent",
+        "type": "stat",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "kube_pod_info{namespace=\"agent-system\", label_app=~\"agent-.*\"} | count by (label_app)",
+            "legendFormat": "{{label_app}}"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 14, "w": 12, "h": 6}
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "10s"
+  }
+}

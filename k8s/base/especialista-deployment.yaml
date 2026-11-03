@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-especialista
+  namespace: agent-system
+  labels:
+    app: agent-especialista
+    component: especialista
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agent-especialista
+  template:
+    metadata:
+      labels:
+        app: agent-especialista
+        component: especialista
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: agent-especialista
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: especialista
+          image: agent-especialista:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: LOG_LEVEL
+              value: "INFO"
+            - name: INPUT_PATH
+              value: "/data/in"
+            - name: OUTPUT_PATH
+              value: "/data/out"
+            - name: USAR_LLM
+              value: "false"
+            - name: MODELO_LLM
+              value: "gpt-4"
+            - name: S3_BUCKET
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: s3-bucket
+                  optional: true
+            - name: LOKI_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: agent-config
+                  key: loki-url
+                  optional: true
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "2Gi"
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: config
+              mountPath: /config
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: agent-data-pvc
+        - name: config
+          configMap:
+            name: agent-especialista-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-especialista
+  namespace: agent-system
+  labels:
+    app: agent-especialista
+spec:
+  selector:
+    app: agent-especialista
+  ports:
+    - port: 8080
+      targetPort: 8080
+      name: http
+  type: ClusterIP

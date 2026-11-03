@@ -1,0 +1,114 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: agent-system
+
+bases:
+  - ../../base
+
+patches:
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: agent-redator
+      spec:
+        replicas: 3
+        template:
+          spec:
+            containers:
+              - name: redator
+                resources:
+                  requests:
+                    cpu: "200m"
+                    memory: "256Mi"
+                  limits:
+                    cpu: "1000m"
+                    memory: "1Gi"
+    target:
+      kind: Deployment
+      name: agent-redator
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: agent-triador
+      spec:
+        replicas: 3
+        template:
+          spec:
+            containers:
+              - name: triador
+                resources:
+                  requests:
+                    cpu: "200m"
+                    memory: "512Mi"
+                  limits:
+                    cpu: "1000m"
+                    memory: "2Gi"
+    target:
+      kind: Deployment
+      name: agent-triador
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: agent-especialista
+      spec:
+        replicas: 2
+        template:
+          spec:
+            containers:
+              - name: especialista
+                resources:
+                  requests:
+                    cpu: "500m"
+                    memory: "1Gi"
+                  limits:
+                    cpu: "2000m"
+                    memory: "4Gi"
+    target:
+      kind: Deployment
+      name: agent-especialista
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: agent-handoff
+      spec:
+        replicas: 3
+        template:
+          spec:
+            containers:
+              - name: handoff
+                resources:
+                  requests:
+                    cpu: "200m"
+                    memory: "512Mi"
+                  limits:
+                    cpu: "1000m"
+                    memory: "2Gi"
+    target:
+      kind: Deployment
+      name: agent-handoff
+
+configMapGenerator:
+  - name: agent-config
+    behavior: merge
+    literals:
+      - environment=production
+      - log-level=INFO
+      - s3-bucket=agent-incidents-prod
+
+images:
+  - name: agent-redator
+    newTag: latest
+  - name: agent-triador
+    newTag: latest
+  - name: agent-especialista
+    newTag: latest
+  - name: agent-handoff
+    newTag: latest
+
+commonLabels:
+  environment: production
